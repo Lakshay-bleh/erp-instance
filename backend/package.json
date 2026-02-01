@@ -1,0 +1,15 @@
+{
+  "name": "erp-incident-triage-portal",
+  "private": true,
+  "description": "ERP Incident Triage Portal - Next.js frontend in frontend/",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "install": "cd frontend && npm install"
+  },
+  "dependencies": {
+    "next": "14.2.3"
+  },
+  "devDependencies": {
+    "next": "14.2.3"
+  }
+}
