@@ -92,7 +92,9 @@ async function proxy(request: NextRequest, pathSegments: string[]) {
 
     const resHeaders = new Headers();
     res.headers.forEach((value, key) => {
-      if (key.toLowerCase() === "transfer-encoding") return;
+      const k = key.toLowerCase();
+      // We send decompressed body (res.text()), so don't forward encoding headers
+      if (k === "transfer-encoding" || k === "content-encoding") return;
       resHeaders.set(key, value);
     });
 
