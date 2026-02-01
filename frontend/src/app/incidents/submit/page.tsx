@@ -64,6 +64,12 @@ export default function SubmitIncidentPage() {
         description: "Your incident has been created and is being enriched.",
         variant: "success",
       });
+      // Pass created incident to detail page so it shows even if GET 404s (e.g. backend local store)
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(`incident-${incident.id}`, JSON.stringify(incident));
+        } catch (_) {}
+      }
       router.push(`/incidents/${incident.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";

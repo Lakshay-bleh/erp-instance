@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import { getIncident, updateIncidentStatus, updateIncidentTags, enrichIncident, type IncidentResponse } from "@/lib/api";
@@ -27,6 +27,16 @@ function severityVariant(s: string) {
   return "severity_p3";
 }
 
+function getCachedIncident(id: string | null): IncidentResponse | null {
+  if (typeof window === "undefined" || !id) return null;
+  try {
+    const raw = sessionStorage.getItem(`incident-${id}`);
+    return raw ? (JSON.parse(raw) as IncidentResponse) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function IncidentDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -35,10 +45,22 @@ export default function IncidentDetailPage() {
   const [tagSubmitting, setTagSubmitting] = useState(false);
   const [enriching, setEnriching] = useState(false);
 
+  const cached = useMemo(() => getCachedIncident(id), [id]);
   const { data: incident, error, isLoading, mutate } = useSWR<IncidentResponse>(
     id ? `incident-${id}` : null,
-    () => getIncident(id)
+    async () => {
+      const data = await getIncident(id);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.removeItem(`incident-${id}`);
+        } catch (_) {}
+      }
+      return data;
+    },
+    { fallbackData: cached ?? undefined }
   );
+  const displayIncident = incident ?? cached;
+  const showingCachedOnly = Boolean(error && cached && !incident);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!incident) return;
@@ -89,7 +111,7 @@ export default function IncidentDetailPage() {
     }
   };
 
-  if (error || (!isLoading && !incident)) {
+  if (!isLoading && !displayIncident) {
     return (
       <div className="space-y-4">
         <Button variant="outline" asChild>
@@ -107,7 +129,7 @@ export default function IncidentDetailPage() {
     );
   }
 
-  if (isLoading || !incident) {
+  if (isLoading && !displayIncident) {
     return (
       <div className="space-y-4">
         <div className="h-8 w-32 animate-pulse rounded bg-muted/30" />
@@ -116,8 +138,17 @@ export default function IncidentDetailPage() {
     );
   }
 
+  const incident = displayIncident!;
+
   return (
     <div className="space-y-6">
+      {showingCachedOnly && (
+        <Card className="border-amber-200 bg-amber-50/80">
+          <CardContent className="py-3 text-sm text-amber-800">
+            Showing the incident you just created. The backend may not have persisted it yet (use DynamoDB on the backend for persistence).
+          </CardContent>
+        </Card>
+      )}
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/incidents">
