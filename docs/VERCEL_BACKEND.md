@@ -52,7 +52,7 @@ Then **commit** so `vercel-backend/backend/` is in the repo (required for deploy
    | Name | Value | Notes |
    |------|--------|--------|
    | `GROQ_API_KEY` | `gsk_...` | From [console.groq.com](https://console.groq.com) |
-   | `CORS_ORIGINS_EXTRA` | `https://your-frontend.vercel.app` | Your frontend URL (comma-separated if multiple) |
+   | `CORS_ORIGINS_EXTRA` | `https://your-frontend.vercel.app` or `*` | Frontend URL(s), comma-separated; or `*` to allow any origin (fixes CORS for all Vercel preview URLs) |
 
    For real AWS (DynamoDB, S3, Lambda), also add:
 

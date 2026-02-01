@@ -25,11 +25,19 @@ _cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 if os.environ.get("VERCEL_URL"):
     _cors_origins.append(f"https://{os.environ['VERCEL_URL']}")
 _settings = get_settings()
-if (_settings.cors_origins_extra or "").strip():
-    for origin in _settings.cors_origins_extra.strip().split(","):
+_cors_extra = (_settings.cors_origins_extra or "").strip()
+if _cors_extra == "*":
+    # Allow any origin (e.g. any Vercel preview URL). Cannot use credentials with *.
+    _cors_origins = ["*"]
+    _cors_credentials = False
+elif _cors_extra:
+    for origin in _cors_extra.split(","):
         origin = origin.strip()
         if origin and origin not in _cors_origins:
             _cors_origins.append(origin)
+    _cors_credentials = True
+else:
+    _cors_credentials = True
 
 app = FastAPI(
     title="ERP Incident Triage Portal API",
@@ -40,9 +48,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_credentials=True,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(incidents.router)
