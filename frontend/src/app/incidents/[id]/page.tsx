@@ -57,7 +57,11 @@ export default function IncidentDetailPage() {
       }
       return result;
     },
-    { fallbackData: cached ?? undefined }
+    {
+      fallbackData: cached ?? undefined,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+    }
   );
   const displayIncident = data ?? cached;
   const showingCachedOnly = Boolean(error && cached && !data);
