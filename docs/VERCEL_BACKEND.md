@@ -40,7 +40,14 @@ Then **commit** so `vercel-backend/backend/` is in the repo (required for deploy
    - **Project Name:** e.g. `erp-incidents-api`.
    - **Root Directory:** click **Edit** → set to **`vercel-backend`** → **Save**.
    - **Framework Preset:** leave as **Other** (do not set Next.js).
-4. **Environment Variables** (Settings → Environment Variables) — add at least:
+4. **Override Build & Install (important):**  
+   If the build still runs `cd frontend && npm install`, the repo root `vercel.json` is being used. Override it:
+   - Go to **Settings** → **General** → **Build & Development Settings**.
+   - Click **Override** next to **Install Command** → set to **`echo 'No install'`** (or leave empty if the UI allows).
+   - Click **Override** next to **Build Command** → set to **`echo 'No build'`** (or leave empty).
+   - **Output Directory:** leave empty.
+   - Save. Then **Redeploy**.
+5. **Environment Variables** (Settings → Environment Variables) — add at least:
 
    | Name | Value | Notes |
    |------|--------|--------|
@@ -59,7 +66,7 @@ Then **commit** so `vercel-backend/backend/` is in the repo (required for deploy
    | `S3_BUCKET` | your bucket name |
    | `USE_LAMBDA_ENRICHMENT` | `true` (optional) |
 
-5. Click **Deploy**.
+6. Click **Deploy**.
 
 ---
 
