@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { getIncident, updateIncidentStatus, updateIncidentTags, enrichIncident, type IncidentResponse } from "@/lib/api";
+import {
+  getIncident,
+  updateIncidentStatus,
+  updateIncidentTags,
+  enrichIncident,
+  deleteIncident,
+  type IncidentResponse,
+} from "@/lib/api";
 import { useToast } from "@/components/ui/toaster";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +18,20 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Lightbulb, Tag, Plus, FileText, Sparkles } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  ArrowLeft,
+  Lightbulb,
+  Tag,
+  Plus,
+  FileText,
+  Sparkles,
+  CheckCircle2,
+  Trash2,
+  Calendar,
+  Building2,
+  Layers,
+} from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -39,11 +59,14 @@ function getCachedIncident(id: string | null): IncidentResponse | null {
 
 export default function IncidentDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const { toast } = useToast();
   const [tagInput, setTagInput] = useState("");
   const [tagSubmitting, setTagSubmitting] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const cached = useMemo(() => getCachedIncident(id), [id]);
   const { data, error, isLoading, mutate } = useSWR<IncidentResponse>(
@@ -77,6 +100,10 @@ export default function IncidentDetailPage() {
     } catch {
       toast({ title: "Failed to update status", variant: "error" });
     }
+  };
+
+  const handleMarkResolved = () => {
+    handleStatusChange("Resolved");
   };
 
   const handleEnrich = async () => {
@@ -115,18 +142,35 @@ export default function IncidentDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!displayIncident) return;
+    setDeleting(true);
+    try {
+      await deleteIncident(displayIncident.id);
+      toast({ title: "Incident deleted", variant: "success" });
+      router.push("/incidents");
+    } catch {
+      toast({ title: "Failed to delete incident", variant: "error" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!isLoading && !displayIncident) {
     return (
-      <div className="space-y-4">
+      <div className="mx-auto max-w-[1200px] px-6 py-8">
         <Button variant="outline" asChild>
           <Link href="/incidents">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to list
           </Link>
         </Button>
-        <Card>
-          <CardContent className="py-12 text-center text-muted">
-            Incident not found or failed to load.
+        <Card className="mt-6">
+          <CardContent className="py-16 text-center">
+            <p className="text-muted">Incident not found or failed to load.</p>
+            <Button variant="outline" asChild className="mt-4">
+              <Link href="/incidents">View all incidents</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -135,207 +179,333 @@ export default function IncidentDetailPage() {
 
   if (isLoading && !displayIncident) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-32 animate-pulse rounded bg-muted/30" />
-        <div className="h-64 animate-pulse rounded-xl bg-muted/20" />
+      <div className="mx-auto max-w-[1200px] px-6 py-8 space-y-6">
+        <div className="h-8 w-32 animate-pulse rounded-lg bg-[#E5E7EB]/50" />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 h-48 animate-pulse rounded-xl bg-[#E5E7EB]/30" />
+          <div className="space-y-6">
+            <div className="h-24 animate-pulse rounded-xl bg-[#E5E7EB]/30" />
+            <div className="h-32 animate-pulse rounded-xl bg-[#E5E7EB]/30" />
+          </div>
+        </div>
       </div>
     );
   }
 
   const incident = displayIncident!;
+  const isResolved = incident.status === "Resolved";
 
   return (
-    <div className="space-y-6">
-      {showingCachedOnly && (
-        <Card className="border-amber-200 bg-amber-50/80">
-          <CardContent className="py-3 text-sm text-amber-800">
-            Showing the incident you just created. The backend may not have persisted it yet (use DynamoDB on the backend for persistence).
-          </CardContent>
-        </Card>
-      )}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/incidents">
+    <div className="min-h-screen bg-[#F8F9FB]">
+      <div className="mx-auto max-w-[1200px] px-6 py-8 lg:py-10">
+        {showingCachedOnly && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-800"
+          >
+            Showing the incident you just created. The backend may not have persisted it yet (use DynamoDB for persistence).
+          </motion.div>
+        )}
+
+        {/* Hero */}
+        <motion.header
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="mb-10"
+        >
+          <Link
+            href="/incidents"
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted hover:text-[#111827] transition-colors mb-6"
+          >
             <ArrowLeft className="h-4 w-4" />
+            Back to incidents
           </Link>
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-[#111827] truncate">{incident.title}</h1>
-          <p className="mt-1 text-sm text-muted">
-            {incident.erp_module} · {incident.environment} · {incident.business_unit}
+          <h1 className="text-2xl font-semibold tracking-tight text-[#111827] lg:text-3xl max-w-3xl">
+            {incident.title}
+          </h1>
+          <p className="mt-2 text-sm text-muted flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1">
+              <Layers className="h-3.5 w-3.5" />
+              {incident.erp_module}
+            </span>
+            <span className="text-[#E5E7EB]">·</span>
+            <span>{incident.environment}</span>
+            <span className="text-[#E5E7EB]">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3.5 w-3.5" />
+              {incident.business_unit}
+            </span>
           </p>
+        </motion.header>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+          {/* Left column: Description + Metadata */}
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Card className="border-[#E5E7EB] bg-surface shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-[#111827]">
+                  Description
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <p className="text-[15px] leading-relaxed text-[#374151] whitespace-pre-wrap">
+                  {incident.description}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-[#E5E7EB] bg-surface shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-[#111827]">
+                  Details
+                </CardTitle>
+                <CardDescription className="text-xs uppercase tracking-wide text-muted">
+                  Created & updated
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="inline-flex items-center gap-1.5 text-muted">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(incident.created_at).toLocaleString()}
+                  </span>
+                  <span className="text-[#E5E7EB]">·</span>
+                  <span className="text-muted">
+                    Updated {new Date(incident.updated_at).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="module">{incident.erp_module}</Badge>
+                  <Badge variant="category">{incident.category}</Badge>
+                  <span className="text-xs text-muted py-1 px-2 rounded-md bg-muted/10">
+                    {incident.environment}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Right column: Severity, Category, Status, Actions, Summary, Suggested action, Tags */}
+          <motion.aside
+            className="space-y-6"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25, delay: 0.05 }}
+          >
+            {/* Severity & Category row */}
+            <div className="flex flex-wrap gap-3">
+              <div className="rounded-xl border border-[#E5E7EB] bg-surface px-4 py-3 shadow-sm">
+                <p className="label text-muted mb-1.5">Severity</p>
+                <Badge variant={severityVariant(incident.severity)} className="text-sm px-3 py-1.5">
+                  {incident.severity}
+                </Badge>
+              </div>
+              <div className="rounded-xl border border-[#E5E7EB] bg-surface px-4 py-3 shadow-sm">
+                <p className="label text-muted mb-1.5">Category</p>
+                <Badge variant="category">{incident.category}</Badge>
+              </div>
+            </div>
+
+            {/* Status + Mark Resolved */}
+            <Card className="border-[#E5E7EB] bg-surface shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-[#111827]">
+                  Status
+                </CardTitle>
+                <CardDescription className="text-xs uppercase tracking-wide text-muted">
+                  Update workflow state
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-4">
+                <div className="flex items-center gap-3">
+                  <StatusPill status={incident.status} className="text-sm" />
+                </div>
+                <Select
+                  label="Change status"
+                  options={STATUS_OPTIONS}
+                  value={incident.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="w-full"
+                />
+                {!isResolved && (
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={handleMarkResolved}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark as Resolved
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Suggested action (prominent) */}
+            <Card className="border-[#0A84FF]/25 bg-[#0A84FF]/5 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                <div>
+                  <CardTitle className="text-base font-semibold text-[#111827] flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-[#0A84FF]" />
+                    Suggested next step
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    AI-recommended action
+                  </CardDescription>
+                </div>
+                {!incident.suggested_action && incident.auto_summary && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleEnrich}
+                    disabled={enriching}
+                    className="shrink-0"
+                  >
+                    {enriching ? "…" : "Generate"}
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="pt-0">
+                {incident.suggested_action ? (
+                  <p className="text-sm font-medium text-[#374151] leading-relaxed">
+                    {incident.suggested_action}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted">
+                    No suggested action yet. Use &quot;Generate with AI&quot; below to get a recommended next step.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Auto summary */}
+            <Card className="border-[#E5E7EB] bg-surface shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                <div>
+                  <CardTitle className="text-base font-semibold text-[#111827] flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Auto-generated summary
+                  </CardTitle>
+                </div>
+                {!incident.auto_summary && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    onClick={handleEnrich}
+                    disabled={enriching}
+                    className="shrink-0"
+                  >
+                    {enriching ? "Generating…" : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        Generate with AI
+                      </>
+                    )}
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="pt-0">
+                {incident.auto_summary ? (
+                  <p className="text-sm text-[#374151] leading-relaxed">
+                    {incident.auto_summary}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted">
+                    No summary yet. Click &quot;Generate with AI&quot; to create one using Groq.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Tags */}
+            <Card className="border-[#E5E7EB] bg-surface shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-[#111827] flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted" />
+                  Tags
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Add tags to categorize this incident
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {(incident.tags ?? []).length > 0 ? (
+                    (incident.tags ?? []).map((t) => (
+                      <Badge key={t} variant="tag">
+                        {t}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted">No tags yet</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add tag..."
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleAddTag}
+                    disabled={!tagInput.trim() || tagSubmitting}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Danger zone: Delete */}
+            <Card className="border-[#FEE2E2] bg-[#FEF2F2]/50 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold text-[#111827]">
+                  Danger zone
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Permanently delete this incident. This cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Button
+                  variant="outline"
+                  className="border-danger/30 text-danger hover:bg-danger/10 hover:text-danger"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={deleting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete incident
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.aside>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <motion.div
-          className="lg:col-span-2 space-y-6"
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-[#374151] whitespace-pre-wrap">{incident.description}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Metadata</CardTitle>
-              <p className="text-xs text-muted">Created {new Date(incident.created_at).toLocaleString()} · Updated {new Date(incident.updated_at).toLocaleString()}</p>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Badge variant="module">{incident.erp_module}</Badge>
-              <Badge variant="category">{incident.category}</Badge>
-              <span className="text-sm text-muted">{incident.environment}</span>
-              <span className="text-sm text-muted">{incident.business_unit}</span>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          className="space-y-6"
-          initial={{ opacity: 0, x: 8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2, delay: 0.05 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Severity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge variant={severityVariant(incident.severity)} className="text-sm px-3 py-1">
-                {incident.severity}
-              </Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Category</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge variant="category">{incident.category}</Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Status</CardTitle>
-              <CardDescription className="sr-only">Update incident status</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <StatusPill status={incident.status} className="text-sm" />
-              <Select
-                options={STATUS_OPTIONS}
-                value={incident.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full"
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Tag className="h-4 w-4 text-muted" />
-                Tags
-              </CardTitle>
-              <CardDescription>Add tags to categorize. Auto-generated tags appear below.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-1.5">
-                {(incident.tags ?? []).map((t) => (
-                  <Badge key={t} variant="tag">{t}</Badge>
-                ))}
-                {(incident.tags ?? []).length === 0 && (
-                  <span className="text-xs text-muted">No tags yet</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add tag..."
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleAddTag}
-                  disabled={!tagInput.trim() || tagSubmitting}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                Auto-generated summary
-              </CardTitle>
-              {!incident.auto_summary && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  onClick={handleEnrich}
-                  disabled={enriching}
-                  className="shrink-0"
-                >
-                  {enriching ? "Generating…" : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                      Generate with AI
-                    </>
-                  )}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {incident.auto_summary ? (
-                <p className="text-sm text-[#374151] leading-relaxed">{incident.auto_summary}</p>
-              ) : (
-                <p className="text-sm text-muted">
-                  No summary yet. Click &quot;Generate with AI&quot; to create one using Groq (uses the API key in backend .env).
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-accent/30 bg-accent/5">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-accent" />
-                Suggested next step / action
-              </CardTitle>
-              {!incident.suggested_action && incident.auto_summary && (
-                <Button type="button" size="sm" variant="outline" onClick={handleEnrich} disabled={enriching} className="shrink-0">
-                  {enriching ? "…" : "Generate"}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {incident.suggested_action ? (
-                <p className="text-sm text-[#374151] leading-relaxed font-medium">{incident.suggested_action}</p>
-              ) : (
-                <p className="text-sm text-muted">
-                  No suggested action yet. Use &quot;Generate with AI&quot; above to get a recommended next step.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete incident"
+        description="Are you sure you want to delete this incident? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDelete}
+        loading={deleting}
+      />
     </div>
   );
 }

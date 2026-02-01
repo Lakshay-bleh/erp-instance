@@ -107,6 +107,15 @@ export async function updateIncidentTags(
   return res.json();
 }
 
+/** Delete an incident permanently. */
+export async function deleteIncident(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/incidents/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Incident not found");
+    throw new Error("Failed to delete incident");
+  }
+}
+
 /** Run Groq AI to generate summary and suggested action for this incident. */
 export async function enrichIncident(id: string): Promise<IncidentResponse> {
   const res = await fetch(`${API_BASE}/incidents/${id}/enrich`, {

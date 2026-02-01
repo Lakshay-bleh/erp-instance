@@ -135,3 +135,23 @@ def scan_incidents(table_name: str) -> List[Dict[str, Any]]:
         return items
     _load_local_store()
     return list(_local_store.values())
+
+
+def delete_incident(table_name: str, incident_id: str) -> bool:
+    """Delete incident by id. Returns True if deleted, False if not found."""
+    existing = get_incident(table_name, incident_id)
+    if not existing:
+        return False
+    client = get_dynamodb_client()
+    if client:
+        table = client.Table(table_name)
+        table.delete_item(Key={"id": incident_id})
+        logger.info("DynamoDB delete_incident id=%s", incident_id)
+        return True
+    _load_local_store()
+    if incident_id not in _local_store:
+        return False
+    del _local_store[incident_id]
+    _save_local_store()
+    logger.info("Local store delete_incident id=%s", incident_id)
+    return True

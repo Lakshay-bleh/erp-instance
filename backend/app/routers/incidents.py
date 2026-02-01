@@ -14,7 +14,7 @@ from ..models import (
     IncidentUpdateTags,
     Status,
 )
-from ..services.dynamodb import put_incident, get_incident, update_incident, scan_incidents
+from ..services.dynamodb import put_incident, get_incident, update_incident, scan_incidents, delete_incident
 from ..services.s3 import put_raw_payload
 from ..services.lambda_client import run_enrichment_in_process, invoke_enrichment_lambda
 from ..enrichment import compute_severity, merge_severity
@@ -196,6 +196,17 @@ def update_incident_tags(incident_id: str, body: IncidentUpdateTags):
     updates = {"tags": tags, "updated_at": _now_iso()}
     updated = update_incident(settings.dynamodb_table, incident_id, updates)
     return _item_to_response(updated)
+
+
+@router.delete("/{incident_id}", status_code=204)
+def delete_incident_by_id(incident_id: str):
+    """Delete an incident permanently."""
+    settings = get_settings()
+    deleted = delete_incident(settings.dynamodb_table, incident_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    logger.info("Incident deleted id=%s", incident_id)
+    return None
 
 
 @router.post("/{incident_id}/enrich", response_model=IncidentResponse)
