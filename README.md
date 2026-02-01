@@ -1,4 +1,3 @@
-
 # ERP Incident Triage Portal
 
 AI-assisted platform for enterprise teams to submit, enrich, triage, and manage ERP incidents originating from Oracle ERP systems. Built as a production-grade, UI-first web application using the locked tech stack and AWS Free Tier only.
@@ -199,5 +198,6 @@ When backend uses real AWS, set `USE_LOCAL_AWS=false` and configure AWS credenti
 - **Success:** #22C55E · **Warning:** #F59E0B · **Danger:** #EF4444 · **Muted:** #6B7280
 - Typography: headings 600, body 400, labels uppercase 12px tracking-wide.
 - 24px base grid, max content width 1200px, Framer Motion for subtle transitions.
-#   e r p - i n s t a n c e  
+#   e r p - i n s t a n c e 
+ 
  
