@@ -116,10 +116,23 @@ Example: `https://erp-incidents-api.vercel.app/api`
 
 ---
 
+## Persistence (important)
+
+**Without DynamoDB, incidents are not persisted on Vercel.**  
+Vercel serverless runs each request in a new or different instance. The backend’s local/file store is not shared across instances, so:
+
+- **Only incidents created in the same “session” (same instance)** may be visible.
+- **Opening an existing incident** (from list or direct URL) often returns **404** because another instance serves the request and has an empty store.
+- **PATCH (status update)** and **DELETE** also return **404** for the same reason: the incident is not in that instance’s store.
+
+**Fix:** Configure **DynamoDB** for the backend (see Environment Variables above). Then all incidents persist and GET/PATCH/DELETE work across requests and deployments.
+
+---
+
 ## Troubleshooting
 
-- **404 when opening an incident detail (after creating it):**  
-  On Vercel serverless, each request can run in a different instance. If the backend uses **local/in-memory store** (no DynamoDB), data does not persist across requests: create succeeds in one instance, but the GET for the detail runs in another instance with an empty store → 404.  
+- **404 when opening an incident detail, or when updating status / deleting:**  
+  On Vercel serverless, each request can run in a different instance. If the backend uses **local/in-memory store** (no DynamoDB), data does not persist across requests: create succeeds in one instance, but GET/PATCH/DELETE run in another instance with an empty store → 404.  
   **Fix:** Use **DynamoDB** on the backend. In the backend Vercel project → Settings → Environment Variables, set:  
   `USE_MEMORY_STORE` = `false`, plus `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE` (e.g. `erp-incidents`), and create the table in AWS if needed. Then redeploy the backend.
 

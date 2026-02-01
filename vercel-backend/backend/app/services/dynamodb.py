@@ -13,8 +13,12 @@ logger = logging.getLogger(__name__)
 # In-memory store for local development when boto3 DynamoDB is not used
 _local_store: Dict[str, Dict[str, Any]] = {}
 # Use absolute path so it works on Vercel/serverless (CWD may differ)
+# On Vercel, filesystem is read-only except /tmp; use /tmp so writes don't fail (data still not shared across instances)
 _base_dir = Path(__file__).resolve().parent.parent.parent  # backend/
-_local_store_path = str(_base_dir / "data" / "incidents.json")
+if os.environ.get("VERCEL"):
+    _local_store_path = "/tmp/erp-incidents.json"
+else:
+    _local_store_path = str(_base_dir / "data" / "incidents.json")
 
 
 def _ensure_data_dir():
