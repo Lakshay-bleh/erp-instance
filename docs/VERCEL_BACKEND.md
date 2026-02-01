@@ -144,14 +144,9 @@ Vercel serverless runs each request in a new or different instance. The backend�
   **Fix:** Use **DynamoDB** on the backend. In the backend Vercel project → Settings → Environment Variables, set:  
   `USE_MEMORY_STORE` = `false`, plus `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE` (e.g. `erp-incidents`), and create the table in AWS if needed. Then redeploy the backend.
 
-- **CORS errors from frontend (200 OK but browser blocks):**
-  1. Set **CORS_ORIGINS_EXTRA** = `*` on the backend project (env vars).
-  2. **Add Response Headers in Vercel:** Backend project → **Settings** → **Headers** → **Add**:
-     - **Source:** `/api/:path*` (or `/api/(.*)`)
-     - Add header: **Access-Control-Allow-Origin** = `*`
-     - Add header: **Access-Control-Allow-Methods** = `GET, POST, PATCH, PUT, DELETE, OPTIONS`
-     - Add header: **Access-Control-Allow-Headers** = `*`
-     - Add header: **Access-Control-Max-Age** = `86400`
-  3. Redeploy the backend. Headers from the dashboard are applied at the edge to every response for that path.
+- **CORS errors / OPTIONS preflight failing:**
+  1. The backend uses FastAPI **CORSMiddleware** (`app.py`) so OPTIONS and all responses get CORS headers. Redeploy after pulling the latest `app.py`.
+  2. **Vercel Deployment Protection:** If the backend project has Deployment Protection (password) enabled, OPTIONS preflight may be blocked or return a different response. Either disable Deployment Protection for the backend, or add OPTIONS to the allowlist (Settings → Deployment Protection → OPTIONS Allowlist).
+  3. **Headers at edge (optional):** Backend project → **Settings** → **Headers** → **Add** for `/api/:path*`: **Access-Control-Allow-Origin** = `*`, **Access-Control-Allow-Methods** = `GET, POST, PATCH, PUT, DELETE, OPTIONS`, **Access-Control-Allow-Headers** = `*`, **Access-Control-Max-Age** = `86400`. Redeploy.
 - **404 on /api/...:** Confirm Root Directory is **`vercel-backend`** (not `.` or `frontend`).
 - **Module not found (e.g. backend.app):** Ensure `vercel-backend/backend/` exists and is committed; re-run `.\scripts\prepare-vercel-backend.ps1` and commit.
