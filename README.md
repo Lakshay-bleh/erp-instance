@@ -146,19 +146,18 @@ When backend uses real AWS, set `USE_LOCAL_AWS=false` and configure AWS credenti
 
 ---
 
-## Deploy frontend to Vercel
+## Deploy frontend and backend together on Vercel
 
-The repo is a **monorepo**: the Next.js app lives in **`frontend/`**. Vercel must build from that directory, not the repo root (otherwise you get **404** or a ~50ms empty build).
+The repo deploys **both** the Next.js frontend and the FastAPI backend on a single Vercel project.
 
 1. **Import** the repo in [Vercel](https://vercel.com) (e.g. from GitHub).
-2. **Set Root Directory** (required):
-   - **Settings** → **General** → **Root Directory**
-   - Click **Edit** → enter **`frontend`** (no leading slash) → **Save**.
-3. **Redeploy:** **Deployments** → … on latest → **Redeploy**, or push a new commit.
+2. **Root Directory:** leave as **`.`** (repo root). The root `vercel.json` builds the frontend from `frontend/` and serves the API from `api/`.
+3. **Environment variables** (Settings → Environment Variables): add at least **GROQ_API_KEY** (from [console.groq.com](https://console.groq.com)). Optional: **USE_MEMORY_STORE** = `true` for local storage on Vercel; for real AWS set **USE_MEMORY_STORE** = `false` and add AWS credentials, **DYNAMODB_TABLE**, **S3_BUCKET**, etc.
+4. **Deploy:** push a commit or trigger **Redeploy** from the Deployments tab.
 
-**Getting 404?** Root Directory must be **`frontend`**. If it’s blank or `.`, Vercel builds from the repo root (no Next.js app there) and every route returns 404. Change it to `frontend` and redeploy.
+**Getting 404?** With combined deploy, Root Directory must be **`.`** (repo root). If it’s blank or `.`, Vercel builds from the repo root (no Next.js app there) and every route returns 404. Change it to `frontend` and redeploy.
 
-Optional: **Environment Variables** (e.g. `NEXT_PUBLIC_API_URL` if the app calls a deployed API). The app has `frontend/vercel.json` for framework settings.
+**Result:** App at `https://your-project.vercel.app/`; API at `/api/incidents`, `/api/health`, etc. The frontend calls `/api` on the same origin. **Frontend only** (backend elsewhere): set **Root Directory** to **`frontend`** and **NEXT_PUBLIC_API_URL** to your backend URL.
 
 ---
 

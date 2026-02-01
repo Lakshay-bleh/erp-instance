@@ -1,4 +1,17 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Same-origin /api when deployed on Vercel; local dev uses backend on :8000
+function getApiBase(): string {
+  if (
+    process.env.NEXT_PUBLIC_API_URL !== undefined &&
+    process.env.NEXT_PUBLIC_API_URL !== ""
+  ) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== "undefined") return "/api";
+  // SSR on Vercel: use deployment URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api`;
+  return "http://localhost:8000";
+}
+const API_BASE = getApiBase();
 
 export type IncidentResponse = {
   id: string;

@@ -1,6 +1,7 @@
 """FastAPI application for ERP Incident Triage Portal."""
 
 import logging
+import os
 import sys
 
 from fastapi import FastAPI
@@ -17,6 +18,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# CORS: local dev + Vercel deployment (same-origin when frontend and API on same domain)
+_cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+if os.environ.get("VERCEL_URL"):
+    _cors_origins.append(f"https://{os.environ['VERCEL_URL']}")
+
 app = FastAPI(
     title="ERP Incident Triage Portal API",
     description="AI-assisted incident submission, enrichment, and triage for Oracle ERP.",
@@ -25,7 +31,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
