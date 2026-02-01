@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from uuid import uuid4
@@ -11,31 +12,40 @@ logger = logging.getLogger(__name__)
 
 # In-memory store for local development when boto3 DynamoDB is not used
 _local_store: Dict[str, Dict[str, Any]] = {}
-_local_store_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "incidents.json")
+# Use absolute path so it works on Vercel/serverless (CWD may differ)
+_base_dir = Path(__file__).resolve().parent.parent.parent  # backend/
+_local_store_path = str(_base_dir / "data" / "incidents.json")
 
 
 def _ensure_data_dir():
-    d = os.path.dirname(_local_store_path)
-    if d and not os.path.isdir(d):
-        os.makedirs(d, exist_ok=True)
+    try:
+        d = os.path.dirname(_local_store_path)
+        if d and not os.path.isdir(d):
+            os.makedirs(d, exist_ok=True)
+    except Exception as e:
+        logger.warning("Could not create data dir: %s", e)
 
 
 def _load_local_store():
     global _local_store
     if _local_store:
         return
-    _ensure_data_dir()
-    if os.path.isfile(_local_store_path):
-        try:
+    try:
+        _ensure_data_dir()
+        if os.path.isfile(_local_store_path):
             with open(_local_store_path, "r") as f:
-                _local_store = json.load(f)
-        except Exception:
+                data = json.load(f)
+                _local_store = data if isinstance(data, dict) else {}
+        else:
             _local_store = {}
+    except Exception as e:
+        logger.warning("Could not load local store: %s", e)
+        _local_store = {}
 
 
 def _save_local_store():
-    _ensure_data_dir()
     try:
+        _ensure_data_dir()
         with open(_local_store_path, "w") as f:
             json.dump(_local_store, f, indent=2)
     except Exception as e:
