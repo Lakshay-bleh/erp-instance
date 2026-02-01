@@ -8,6 +8,8 @@ import traceback
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from .config import get_settings
 from .routers import incidents
@@ -27,7 +29,6 @@ if os.environ.get("VERCEL_URL"):
 _settings = get_settings()
 _cors_extra = (_settings.cors_origins_extra or "").strip()
 if _cors_extra == "*":
-    # Allow any origin (e.g. any Vercel preview URL). Cannot use credentials with *.
     _cors_origins = ["*"]
     _cors_credentials = False
 elif _cors_extra:
@@ -39,12 +40,42 @@ elif _cors_extra:
 else:
     _cors_credentials = True
 
+# Allow any origin when on Vercel so all frontend URLs work (override list with * for responses)
+_cors_allow_any = _cors_extra == "*" or os.environ.get("VERCEL")
+
 app = FastAPI(
     title="ERP Incident Triage Portal API",
     description="AI-assisted incident submission, enrichment, and triage for Oracle ERP.",
     version="1.0.0",
 )
 
+
+class AddCorsHeadersMiddleware(BaseHTTPMiddleware):
+    """Inject CORS headers into every response so they are never missing (e.g. on Vercel)."""
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return JSONResponse(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Max-Age": "86400",
+                },
+            )
+        response = await call_next(request)
+        origin = request.headers.get("origin") or "*"
+        if _cors_allow_any:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        elif origin in _cors_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+
+app.add_middleware(AddCorsHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
