@@ -4,10 +4,16 @@
   "framework": null,
   "buildCommand": "echo 'Backend: no build'",
   "outputDirectory": "",
-  "installCommand": "echo 'Backend: no install'",
+  "installCommand": "pip install -r requirements.txt",
+  "builds": [
+    { "src": "app.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "app.py" }
+  ],
   "headers": [
     {
-      "source": "/api/:path*",
+      "source": "/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PATCH, OPTIONS, PUT, DELETE" },

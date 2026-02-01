@@ -1,0 +1,17 @@
+[project]
+name = "erp-incidents-api"
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "pydantic>=2.12.0",
+    "pydantic-settings>=2.6.0",
+    "boto3>=1.34.0",
+    "httpx>=0.26.0",
+    "python-dotenv>=1.0.1",
+    "groq>=0.4.2",
+]
+
+[project.scripts]
+# Tell Vercel to use app.py as the FastAPI entry point (handles all routes)
+app = "app:app"

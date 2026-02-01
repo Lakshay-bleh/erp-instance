@@ -38,16 +38,17 @@ Then **commit** so `vercel-backend/backend/` is in the repo (required for deploy
 2. **Import** the same Git repo (e.g. GitHub) you use for the frontend.
 3. **Configure:**
    - **Project Name:** e.g. `erp-incidents-api`.
-   - **Root Directory:** click **Edit** → set to **`vercel-backend`** → **Save**.
+   - **Root Directory:** click **Edit** → set to **`vercel-backend`** → **Save**. (Must be exactly `vercel-backend` so `app.py` and `api/` are at the project root.)
    - **Framework Preset:** leave as **Other** (do not set Next.js).
-4. **Override Build & Install (important):**  
+4. **Build & Install:** The repo’s `vercel-backend/vercel.json` sets `installCommand` to `pip install -r requirements.txt` and uses `builds` + `routes` so all traffic goes to `app.py`. If the dashboard overrides Install/Build, ensure install runs so dependencies are installed.
+5. **Override Build & Install (if needed):**  
    If the build still runs `cd frontend && npm install`, the repo root `vercel.json` is being used. Override it:
    - Go to **Settings** → **General** → **Build & Development Settings**.
-   - Click **Override** next to **Install Command** → set to **`echo 'No install'`** (or leave empty if the UI allows).
-   - Click **Override** next to **Build Command** → set to **`echo 'No build'`** (or leave empty).
+   - **Install Command:** use **`pip install -r requirements.txt`** (or leave default so `vercel-backend/vercel.json` is used).
+   - **Build Command:** leave empty or **`echo 'No build'`**.
    - **Output Directory:** leave empty.
    - Save. Then **Redeploy**.
-5. **Environment Variables** (Settings → Environment Variables) — add at least:
+6. **Environment Variables** (Settings → Environment Variables) — add at least:
 
    | Name | Value | Notes |
    |------|--------|--------|
@@ -66,7 +67,7 @@ Then **commit** so `vercel-backend/backend/` is in the repo (required for deploy
    | `S3_BUCKET` | your bucket name |
    | `USE_LAMBDA_ENRICHMENT` | `true` (optional) |
 
-6. Click **Deploy**.
+7. Click **Deploy**.
 
 ---
 
@@ -130,6 +131,13 @@ Vercel serverless runs each request in a new or different instance. The backend�
 ---
 
 ## Troubleshooting
+
+- **"The page could not be found" / NOT_FOUND (with a long ID like `bom1:bom1::rdvds-...`):**  
+  This is **Vercel’s generic 404**, not your FastAPI app. It means the request reached a Vercel project that **does not have a serverless function for that path**.  
+  **Typical causes and fixes:**  
+  1. **Request going to frontend project:** The URL is the frontend (e.g. `https://erp-instance.vercel.app/api/...`) instead of the backend. Use **two Vercel projects**: frontend (Root = `frontend`), backend (Root = `vercel-backend`). In the **frontend** project set **NEXT_PUBLIC_API_URL** = `https://<backend-project>.vercel.app/api` (backend URL only). Redeploy frontend.  
+  2. **Backend project Root Directory wrong:** In the **backend** project, **Root Directory** must be **`vercel-backend`** so that `app.py`, `api/`, and `vercel.json` are at the deployed root.  
+  3. **After code changes:** Ensure `vercel-backend/app.py` exists (single FastAPI entry with CORS and mount at `/api`). Commit, push, and **Redeploy** the backend project. Test `https://<backend-project>.vercel.app/` and `https://<backend-project>.vercel.app/api/health`.
 
 - **404 when opening an incident detail, or when updating status / deleting:**  
   On Vercel serverless, each request can run in a different instance. If the backend uses **local/in-memory store** (no DynamoDB), data does not persist across requests: create succeeds in one instance, but GET/PATCH/DELETE run in another instance with an empty store → 404.  
