@@ -118,6 +118,14 @@ Example: `https://erp-incidents-api.vercel.app/api`
 
 ## Troubleshooting
 
-- **CORS errors from frontend:** Add the frontend URL to **CORS_ORIGINS_EXTRA** (e.g. `https://your-app.vercel.app`).
+- **CORS errors from frontend (200 OK but browser blocks):**
+  1. Set **CORS_ORIGINS_EXTRA** = `*` on the backend project (env vars).
+  2. **Add Response Headers in Vercel:** Backend project → **Settings** → **Headers** → **Add**:
+     - **Source:** `/api/:path*` (or `/api/(.*)`)
+     - Add header: **Access-Control-Allow-Origin** = `*`
+     - Add header: **Access-Control-Allow-Methods** = `GET, POST, PATCH, PUT, DELETE, OPTIONS`
+     - Add header: **Access-Control-Allow-Headers** = `*`
+     - Add header: **Access-Control-Max-Age** = `86400`
+  3. Redeploy the backend. Headers from the dashboard are applied at the edge to every response for that path.
 - **404 on /api/...:** Confirm Root Directory is **`vercel-backend`** (not `.` or `frontend`).
 - **Module not found (e.g. backend.app):** Ensure `vercel-backend/backend/` exists and is committed; re-run `.\scripts\prepare-vercel-backend.ps1` and commit.

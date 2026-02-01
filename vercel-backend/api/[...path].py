@@ -17,21 +17,29 @@ from starlette.requests import Request
 
 from backend.app.main import app as backend_app
 
-# CORS headers to add to every response (Vercel entry point)
-CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "*",
-    "Access-Control-Max-Age": "86400",
-}
+CORS_METHODS_HEADERS = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+CORS_ALL_HEADERS = "*"
+CORS_MAX_AGE = "86400"
+
+
+def cors_headers(origin: str | None) -> dict:
+    """Allow request origin (reflect) or * so browser accepts the response."""
+    return {
+        "Access-Control-Allow-Origin": origin or "*",
+        "Access-Control-Allow-Methods": CORS_METHODS_HEADERS,
+        "Access-Control-Allow-Headers": CORS_ALL_HEADERS,
+        "Access-Control-Max-Age": CORS_MAX_AGE,
+        "Access-Control-Expose-Headers": "*",
+    }
 
 
 class CorsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
         if request.method == "OPTIONS":
-            return JSONResponse(status_code=200, headers=CORS_HEADERS)
+            return JSONResponse(status_code=200, headers=cors_headers(origin or "*"))
         response = await call_next(request)
-        for key, value in CORS_HEADERS.items():
+        for key, value in cors_headers(origin).items():
             response.headers[key] = value
         return response
 
