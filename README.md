@@ -148,15 +148,17 @@ When backend uses real AWS, set `USE_LOCAL_AWS=false` and configure AWS credenti
 
 ## Deploy frontend to Vercel
 
-The repo is a **monorepo**: the Next.js app lives in **`frontend/`**. Vercel must build from that directory, not the repo root (otherwise the build finishes in ~50ms with no real output).
+The repo is a **monorepo**: the Next.js app lives in **`frontend/`**. Vercel must build from that directory, not the repo root (otherwise you get **404** or a ~50ms empty build).
 
 1. **Import** the repo in [Vercel](https://vercel.com) (e.g. from GitHub).
-2. **Set Root Directory:**
-   - Project **Settings** → **General** → **Root Directory**
-   - Click **Edit** → set to **`frontend`** → **Save**.
-3. **Redeploy:** trigger a new deployment (e.g. push a commit or **Redeploy** in the Deployments tab).
+2. **Set Root Directory** (required):
+   - **Settings** → **General** → **Root Directory**
+   - Click **Edit** → enter **`frontend`** (no leading slash) → **Save**.
+3. **Redeploy:** **Deployments** → … on latest → **Redeploy**, or push a new commit.
 
-Optional: add **Environment Variables** in Vercel (e.g. `NEXT_PUBLIC_API_URL` if your frontend calls a deployed API). The frontend has a `vercel.json` that sets the framework to Next.js.
+**Getting 404?** Root Directory must be **`frontend`**. If it’s blank or `.`, Vercel builds from the repo root (no Next.js app there) and every route returns 404. Change it to `frontend` and redeploy.
+
+Optional: **Environment Variables** (e.g. `NEXT_PUBLIC_API_URL` if the app calls a deployed API). The app has `frontend/vercel.json` for framework settings.
 
 ---
 
