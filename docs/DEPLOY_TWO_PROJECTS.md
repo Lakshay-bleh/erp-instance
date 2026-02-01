@@ -50,10 +50,15 @@ Deploy the FastAPI app from the **backend** directory.
 
 ### Option D: Vercel (backend as serverless API)
 
-1. Create a **new Vercel project** (separate from the frontend).
-2. **Root Directory**: **`.`** (repo root). The repo root `api/` folder will be used.
-3. **Environment variables**: add `GROQ_API_KEY`, AWS vars, and **CORS_ORIGINS_EXTRA** = your frontend URL (e.g. `https://your-app.vercel.app`).
-4. Deploy. The API will be at `https://your-api-project.vercel.app/api/incidents`, etc. So the **backend base URL** for the frontend is `https://your-api-project.vercel.app/api` (with `/api`).
+Use the **vercel-backend** folder and a separate Vercel project. Full steps and commands: **[docs/VERCEL_BACKEND.md](VERCEL_BACKEND.md)**.
+
+**Quick version:**
+
+1. **Prepare:** From repo root run `.\scripts\prepare-vercel-backend.ps1`, then commit and push.
+2. **New Vercel project** → Import repo → **Root Directory** = **`vercel-backend`**.
+3. **Environment variables:** `GROQ_API_KEY`, `CORS_ORIGINS_EXTRA` = your frontend URL, plus AWS vars if needed.
+4. Deploy. **Backend base URL** = `https://<your-backend-project>.vercel.app/api`.
+5. In the frontend project set **NEXT_PUBLIC_API_URL** = that URL.
 
 ---
 
