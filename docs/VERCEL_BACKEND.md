@@ -118,6 +118,11 @@ Example: `https://erp-incidents-api.vercel.app/api`
 
 ## Troubleshooting
 
+- **404 when opening an incident detail (after creating it):**  
+  On Vercel serverless, each request can run in a different instance. If the backend uses **local/in-memory store** (no DynamoDB), data does not persist across requests: create succeeds in one instance, but the GET for the detail runs in another instance with an empty store → 404.  
+  **Fix:** Use **DynamoDB** on the backend. In the backend Vercel project → Settings → Environment Variables, set:  
+  `USE_MEMORY_STORE` = `false`, plus `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE` (e.g. `erp-incidents`), and create the table in AWS if needed. Then redeploy the backend.
+
 - **CORS errors from frontend (200 OK but browser blocks):**
   1. Set **CORS_ORIGINS_EXTRA** = `*` on the backend project (env vars).
   2. **Add Response Headers in Vercel:** Backend project → **Settings** → **Headers** → **Add**:
