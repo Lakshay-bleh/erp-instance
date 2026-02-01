@@ -21,9 +21,11 @@ CORS_HEADERS = [
     (b"access-control-expose-headers", b"*"),
 ]
 
-# Root app: mount backend at /api
+# Root app: mount backend so both /api/incidents/... and /incidents/... work.
+# (Vercel may pass path with or without /api depending on runtime.)
 root_app = FastAPI()
 root_app.mount("/api", backend_app)
+root_app.mount("/", backend_app)
 
 
 def add_cors_middleware(asgi_app):
