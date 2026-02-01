@@ -36,13 +36,20 @@ Result: The browser requests `https://your-frontend.vercel.app/api/*` (same-orig
 
 ---
 
-## 4. 404 after CORS is fixed
+## 4. 404 Not Found (after CORS is fixed)
 
-If CORS is gone but you get **404** on GET/PATCH/DELETE for an incident:
+If you get **404** on opening an incident, updating status, or deleting:
 
-- The request is reaching the backend; the backend is returning **404 (Incident not found)**.
-- On Vercel, the backend uses **in-memory / file store** unless you set **DynamoDB**. So incidents may not persist across requests.
-- **Fix:** Configure **DynamoDB** on the backend project (see [VERCEL_BACKEND.md](VERCEL_BACKEND.md)): set `USE_MEMORY_STORE=false`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE`, then redeploy the backend.
+- **First check:** On the **frontend** Vercel project, ensure **API_PROXY_TARGET** or **NEXT_PUBLIC_API_URL** is set to your backend URL (e.g. `https://erp-incidents-api.vercel.app` or `.../api`). If not set, the proxy calls `http://localhost:8000` from the server and fails.
+- Otherwise the **proxy is working** and the backend is returning **404 = "Incident not found"** because that incident is not in its store.
+- On Vercel, the backend uses **in-memory / file store** by default, so data does **not** persist across serverless invocations. Only incidents created in the same “session” may exist.
+- **Fix:** Configure **DynamoDB** on the **backend** Vercel project so incidents persist:
+  1. Backend project → **Settings** → **Environment Variables**
+  2. Add: `USE_MEMORY_STORE` = `false`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE` (e.g. `erp-incidents`)
+  3. In **AWS Console** → DynamoDB → create table `erp-incidents` with partition key `id` (String)
+  4. **Redeploy** the backend
+
+  See [VERCEL_BACKEND.md](VERCEL_BACKEND.md) for full steps.
 
 ---
 
