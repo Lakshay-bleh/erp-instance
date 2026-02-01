@@ -1,8 +1,7 @@
 """
 Vercel serverless catch-all for FastAPI backend (backend-only deploy).
-CORS is applied here at the entry point so every response has CORS headers.
+CORS is applied via raw ASGI middleware so headers are always sent.
 """
-import os
 import sys
 from pathlib import Path
 
@@ -10,40 +9,46 @@ _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-
 from backend.app.main import app as backend_app
 
-CORS_METHODS_HEADERS = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
-CORS_ALL_HEADERS = "*"
-CORS_MAX_AGE = "86400"
+# CORS headers to inject into every response (raw ASGI)
+CORS_HEADERS = [
+    (b"access-control-allow-origin", b"*"),
+    (b"access-control-allow-methods", b"GET, POST, PATCH, PUT, DELETE, OPTIONS"),
+    (b"access-control-allow-headers", b"*"),
+    (b"access-control-max-age", b"86400"),
+    (b"access-control-expose-headers", b"*"),
+]
 
 
-def cors_headers(origin: str | None) -> dict:
-    """Allow request origin (reflect) or * so browser accepts the response."""
-    return {
-        "Access-Control-Allow-Origin": origin or "*",
-        "Access-Control-Allow-Methods": CORS_METHODS_HEADERS,
-        "Access-Control-Allow-Headers": CORS_ALL_HEADERS,
-        "Access-Control-Max-Age": CORS_MAX_AGE,
-        "Access-Control-Expose-Headers": "*",
-    }
+async def app_with_mount(scope, receive, send):
+    if scope["type"] != "http":
+        await backend_app(scope, receive, send)
+        return
+    path = scope.get("path", "")
+    if path.startswith("/api"):
+        # Rewrite path for backend: /api/incidents -> /incidents
+        scope = dict(scope)
+        scope["path"] = path[4:] or "/"
+        scope["raw_path"] = (path[4:] or "/").encode("utf-8")
+        await cors_wrapper(scope, receive, send)
+    else:
+        await send({"type": "http.response.start", "status": 404, "headers": CORS_HEADERS})
+        await send({"type": "http.response.body", "body": b"Not Found", "more_body": False})
 
 
-class CorsMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin")
-        if request.method == "OPTIONS":
-            return JSONResponse(status_code=200, headers=cors_headers(origin or "*"))
-        response = await call_next(request)
-        for key, value in cors_headers(origin).items():
-            response.headers[key] = value
-        return response
+async def cors_wrapper(scope, receive, send):
+    async def send_with_cors(message):
+        if message["type"] == "http.response.start":
+            headers = list(message.get("headers", []))
+            headers.extend(CORS_HEADERS)
+            message = {"type": "http.response.start", "status": message["status"], "headers": headers}
+        await send(message)
+    if scope.get("method") == "OPTIONS":
+        await send_with_cors({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"", "more_body": False})
+        return
+    await backend_app(scope, receive, send_with_cors)
 
 
-app = FastAPI()
-app.add_middleware(CorsMiddleware)
-app.mount("/api", backend_app)
+app = app_with_mount
