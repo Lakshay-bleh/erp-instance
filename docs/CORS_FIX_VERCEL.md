@@ -1,32 +1,53 @@
 # Fix CORS on Vercel (proxy through frontend)
 
-If the backend response has **no `Access-Control-Allow-Origin`** header, the browser blocks it. Vercel does not expose a Headers UI, and the Python runtime may not forward custom response headers.
-
-**Recommended fix: proxy the backend through the frontend** so the browser only talks to the frontend (same-origin). No CORS needed.
+**Recommended fix:** Proxy the backend through the frontend so the browser only talks to the frontend (same-origin). No CORS needed.
 
 ---
 
-## 1. Proxy setup (frontend project on Vercel)
+## 1. Frontend project (Vercel)
 
 1. Open your **frontend** project on Vercel → **Settings** → **Environment Variables**.
-2. Add:
+2. Add or set:
    - **Name:** `API_PROXY_TARGET`
-   - **Value:** `https://erp-instance-backend-8b41kejdj-lakshay-blehs-projects.vercel.app`  
-     (your backend URL **without** `/api` at the end)
-3. **Remove** or leave **empty** `NEXT_PUBLIC_API_URL` for Production/Preview so the client uses same-origin `/api`.
+   - **Value:** `https://erp-incidents-api.vercel.app`  
+     (your **backend** project URL, **no** `/api` at the end)
+3. **Remove** `NEXT_PUBLIC_API_URL` for Production and Preview, or set it to **empty** so the client uses same-origin `/api`.
 4. **Redeploy** the frontend.
 
-The frontend `next.config.js` has a **rewrite**: requests to `https://your-frontend.vercel.app/api/*` are proxied to `API_PROXY_TARGET/api/*` on the server. The browser only sees the frontend origin, so there is no cross-origin request and no CORS.
+Result: Requests to `https://your-frontend.vercel.app/api/*` are **rewritten** on the server to `API_PROXY_TARGET/api/*`. The browser only sees the frontend origin → no cross-origin request → no CORS.
 
 ---
 
-## 2. Verify
+## 2. How it works
 
-- Open the app at `https://erp-instance.vercel.app` (or your frontend URL).
-- Open DevTools → Network; reload and check the request to `/api/incidents`. It should be same-origin (no CORS error).
+| Env (frontend)           | Client calls      | Server rewrites to                    |
+|--------------------------|-------------------|----------------------------------------|
+| `API_PROXY_TARGET` set   | `/api/incidents`  | `https://backend.vercel.app/api/incidents` |
+| `NEXT_PUBLIC_API_URL` unset | Same-origin `/api` | Backend                               |
+
+- **next.config.js** already has the rewrite: `source: "/api/:path*"` → `destination: "${API_PROXY_TARGET}/api/:path*"`.
+- **api.ts**: When `NEXT_PUBLIC_API_URL` is unset/empty, `getApiBase()` returns `"/api"` in the browser and `https://${VERCEL_URL}/api` on the server, so all requests go through the frontend and get proxied.
 
 ---
 
-## 3. If you prefer direct backend URL (no proxy)
+## 3. Verify
 
-If you keep `NEXT_PUBLIC_API_URL` set to the backend URL, the browser will call the backend directly and CORS is required. The backend code and ASGI wrapper already try to add CORS headers; if they still don’t appear in the response, use the proxy approach above.
+1. Open the app at your frontend URL (e.g. `https://erp-instance.vercel.app`).
+2. Open DevTools → Network; trigger a request (e.g. list incidents or update status).
+3. The request URL should be **same-origin** (e.g. `https://your-frontend.vercel.app/api/incidents/...`) and there should be **no CORS error**.
+
+---
+
+## 4. 404 after CORS is fixed
+
+If CORS is gone but you get **404** on GET/PATCH/DELETE for an incident:
+
+- The request is reaching the backend; the backend is returning **404 (Incident not found)**.
+- On Vercel, the backend uses **in-memory / file store** unless you set **DynamoDB**. So incidents may not persist across requests.
+- **Fix:** Configure **DynamoDB** on the backend project (see [VERCEL_BACKEND.md](VERCEL_BACKEND.md)): set `USE_MEMORY_STORE=false`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `DYNAMODB_TABLE`, then redeploy the backend.
+
+---
+
+## 5. If you prefer direct backend URL (no proxy)
+
+If you keep **NEXT_PUBLIC_API_URL** set to the backend URL (e.g. `https://erp-incidents-api.vercel.app/api`), the browser will call the backend directly and **CORS is required**. The backend (`app.py`) uses FastAPI `CORSMiddleware`; if CORS errors persist, use the proxy approach above.

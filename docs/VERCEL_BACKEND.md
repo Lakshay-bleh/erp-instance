@@ -1,6 +1,11 @@
 # Deploy Backend on Vercel (separate project)
 
-Deploy the FastAPI backend as its **own Vercel project** so the frontend (another Vercel project or any host) can call it via **NEXT_PUBLIC_API_URL**.
+Deploy the FastAPI backend as its **own Vercel project** so the frontend can call it (directly or via proxy).
+
+**Quick: CORS and 404**
+
+- **CORS:** Use the **proxy** so the browser never calls the backend directly. In the **frontend** Vercel project set **API_PROXY_TARGET** = `https://<backend-project>.vercel.app` (no `/api`) and **leave NEXT_PUBLIC_API_URL unset**. See **[docs/CORS_FIX_VERCEL.md](CORS_FIX_VERCEL.md)**.
+- **404 on GET/PATCH/DELETE:** The backend returned "Incident not found". Configure **DynamoDB** on the backend (see Environment Variables below) so incidents persist.
 
 ---
 
