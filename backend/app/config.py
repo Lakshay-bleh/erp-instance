@@ -11,6 +11,9 @@ _ENV_FILES = [str(_BASE / ".env"), str(_BASE.parent / ".env")]  # backend/.env, 
 
 
 class Settings(BaseSettings):
+    # CORS: when backend is deployed separately, set to your frontend URL(s), comma-separated
+    cors_origins_extra: str = ""
+
     # AWS
     aws_region: str = "us-east-1"
     dynamodb_table: str = "erp-incidents"

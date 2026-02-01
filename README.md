@@ -55,6 +55,8 @@ Local development uses in-memory/local file substitutes when `USE_LOCAL_AWS=true
 
 **To run fully on AWS** (DynamoDB, S3, Lambda, CloudWatch), see **[docs/AWS_DEPLOYMENT.md](docs/AWS_DEPLOYMENT.md)** for step-by-step: create table & bucket, deploy Lambda, set permissions, and run backend with `USE_MEMORY_STORE=false` and `USE_LAMBDA_ENRICHMENT=true`.
 
+**To deploy frontend and backend as two separate projects** (e.g. frontend on Vercel, backend on Railway/Render/Fly.io), see **[docs/DEPLOY_TWO_PROJECTS.md](docs/DEPLOY_TWO_PROJECTS.md)**.
+
 ---
 
 ## Groq Integration

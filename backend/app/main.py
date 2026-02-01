@@ -18,10 +18,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# CORS: local dev + Vercel deployment (same-origin when frontend and API on same domain)
+# CORS: local dev + optional frontend URL when deployed separately
 _cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 if os.environ.get("VERCEL_URL"):
     _cors_origins.append(f"https://{os.environ['VERCEL_URL']}")
+_settings = get_settings()
+if (_settings.cors_origins_extra or "").strip():
+    for origin in _settings.cors_origins_extra.strip().split(","):
+        origin = origin.strip()
+        if origin and origin not in _cors_origins:
+            _cors_origins.append(origin)
 
 app = FastAPI(
     title="ERP Incident Triage Portal API",
