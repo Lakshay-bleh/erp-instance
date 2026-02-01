@@ -46,26 +46,26 @@ export default function IncidentDetailPage() {
   const [enriching, setEnriching] = useState(false);
 
   const cached = useMemo(() => getCachedIncident(id), [id]);
-  const { data: incident, error, isLoading, mutate } = useSWR<IncidentResponse>(
+  const { data, error, isLoading, mutate } = useSWR<IncidentResponse>(
     id ? `incident-${id}` : null,
     async () => {
-      const data = await getIncident(id);
+      const result = await getIncident(id);
       if (typeof window !== "undefined") {
         try {
           sessionStorage.removeItem(`incident-${id}`);
         } catch (_) {}
       }
-      return data;
+      return result;
     },
     { fallbackData: cached ?? undefined }
   );
-  const displayIncident = incident ?? cached;
-  const showingCachedOnly = Boolean(error && cached && !incident);
+  const displayIncident = data ?? cached;
+  const showingCachedOnly = Boolean(error && cached && !data);
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!incident) return;
+    if (!displayIncident) return;
     try {
-      await updateIncidentStatus(incident.id, {
+      await updateIncidentStatus(displayIncident.id, {
         status: newStatus as "Open" | "In Progress" | "Resolved",
       });
       toast({ title: "Status updated", variant: "success" });
@@ -76,10 +76,10 @@ export default function IncidentDetailPage() {
   };
 
   const handleEnrich = async () => {
-    if (!incident) return;
+    if (!displayIncident) return;
     setEnriching(true);
     try {
-      await enrichIncident(incident.id);
+      await enrichIncident(displayIncident.id);
       toast({ title: "Summary and action generated", variant: "success" });
       mutate();
     } catch (e) {
@@ -92,15 +92,15 @@ export default function IncidentDetailPage() {
 
   const handleAddTag = async () => {
     const tag = tagInput.trim().toLowerCase();
-    if (!incident || !tag) return;
-    const current = incident.tags ?? [];
+    if (!displayIncident || !tag) return;
+    const current = displayIncident.tags ?? [];
     if (current.includes(tag)) {
       setTagInput("");
       return;
     }
     setTagSubmitting(true);
     try {
-      await updateIncidentTags(incident.id, { tags: [...current, tag] });
+      await updateIncidentTags(displayIncident.id, { tags: [...current, tag] });
       toast({ title: "Tag added", variant: "success" });
       setTagInput("");
       mutate();
