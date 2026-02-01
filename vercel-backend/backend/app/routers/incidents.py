@@ -143,14 +143,24 @@ def create_incident(body: IncidentCreate):
 @router.get("", response_model=list[IncidentResponse])
 def list_incidents(severity: str | None = None, erp_module: str | None = None):
     """List all incidents with optional filters."""
-    settings = get_settings()
-    items = scan_incidents(settings.dynamodb_table)
-    if severity:
-        items = [i for i in items if i.get("severity") == severity]
-    if erp_module:
-        items = [i for i in items if i.get("erp_module") == erp_module]
-    items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-    return [_item_to_response(i) for i in items]
+    try:
+        settings = get_settings()
+        items = scan_incidents(settings.dynamodb_table)
+        if severity:
+            items = [i for i in items if i.get("severity") == severity]
+        if erp_module:
+            items = [i for i in items if i.get("erp_module") == erp_module]
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        out = []
+        for i in items:
+            try:
+                out.append(_item_to_response(i))
+            except Exception as e:
+                logger.warning("Skip malformed item %s: %s", i.get("id"), e)
+        return out
+    except Exception as e:
+        logger.exception("list_incidents failed: %s", e)
+        raise
 
 
 @router.get("/{incident_id}", response_model=IncidentResponse)

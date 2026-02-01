@@ -3,9 +3,11 @@
 import logging
 import os
 import sys
+import traceback
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .routers import incidents
@@ -44,6 +46,20 @@ app.add_middleware(
 )
 
 app.include_router(incidents.router)
+
+
+@app.exception_handler(Exception)
+def global_exception_handler(request, exc):
+    """Return error detail as JSON so we can debug 500s (e.g. on Vercel)."""
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "error_type": type(exc).__name__,
+            "traceback": traceback.format_exc() if os.environ.get("VERCEL") else None,
+        },
+    )
 
 
 @app.get("/health")
