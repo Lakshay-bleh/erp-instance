@@ -34,6 +34,32 @@ Result: The browser requests `https://your-frontend.vercel.app/api/*` (same-orig
 2. Open DevTools → Network; trigger a request (e.g. list incidents or update status).
 3. The request URL should be **same-origin** (e.g. `https://your-frontend.vercel.app/api/incidents/...`) and there should be **no CORS error**.
 
+### Test with curl (or PowerShell)
+
+**Frontend API (proxy) is running if this returns 200 and JSON:**
+
+```bash
+# Bash / Git Bash
+curl -s "https://erp-instance.vercel.app/api/health"
+# Expected: {"ok":true,"source":"frontend-api"}
+```
+
+```powershell
+# PowerShell
+Invoke-WebRequest -Uri "https://erp-instance.vercel.app/api/health" -UseBasicParsing | Select-Object StatusCode, Content
+# Expected: StatusCode 200, Content {"ok":true,"source":"frontend-api"}
+```
+
+**Backend must respond; if this returns 404, the backend project is not deployed correctly:**
+
+```bash
+# Replace with your backend URL (e.g. erp-incidents-api.vercel.app)
+curl -s "https://YOUR-BACKEND.vercel.app/api/health"
+# Or root: curl -s "https://YOUR-BACKEND.vercel.app/"
+```
+
+**PATCH (Mark Resolved) – if you get 502:** The proxy is running but cannot reach the backend. Set **API_PROXY_TARGET** (or **NEXT_PUBLIC_API_URL**) on the **frontend** project to the **backend** URL and redeploy. Ensure the **backend** project returns 200 for `/api/health` or `/` (see [VERCEL_BACKEND.md](VERCEL_BACKEND.md)).
+
 ---
 
 ## 4. 404 "The page could not be found" / NOT_FOUND (e.g. on PATCH / Mark Resolved)
