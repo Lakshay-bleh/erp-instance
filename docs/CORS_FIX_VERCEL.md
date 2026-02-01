@@ -1,20 +1,18 @@
 # Fix CORS on Vercel (proxy through frontend)
 
-**Recommended fix:** Proxy the backend through the frontend so the browser only talks to the frontend (same-origin). No CORS needed.
+**Fix:** The frontend **always** uses same-origin `/api` in the browser, so requests go through Next.js rewrites to the backend. No cross-origin request → no CORS.
 
 ---
 
 ## 1. Frontend project (Vercel)
 
 1. Open your **frontend** project on Vercel → **Settings** → **Environment Variables**.
-2. Add or set:
-   - **Name:** `API_PROXY_TARGET`
-   - **Value:** `https://erp-incidents-api.vercel.app`  
-     (your **backend** project URL, **no** `/api` at the end)
-3. **Remove** `NEXT_PUBLIC_API_URL` for Production and Preview, or set it to **empty** so the client uses same-origin `/api`.
-4. **Redeploy** the frontend.
+2. Ensure the **rewrite target** is set so `/api/*` is proxied to the backend. Use **one** of:
+   - **API_PROXY_TARGET** = `https://erp-incidents-api.vercel.app` (backend URL **without** `/api`), or
+   - **NEXT_PUBLIC_API_URL** = `https://erp-incidents-api.vercel.app/api` (used only by the server for the rewrite; the browser still uses `/api`).
+3. **Redeploy** the frontend.
 
-Result: Requests to `https://your-frontend.vercel.app/api/*` are **rewritten** on the server to `API_PROXY_TARGET/api/*`. The browser only sees the frontend origin → no cross-origin request → no CORS.
+Result: The browser always requests `https://your-frontend.vercel.app/api/*` (same-origin). Next.js rewrites those to the backend. No CORS.
 
 ---
 

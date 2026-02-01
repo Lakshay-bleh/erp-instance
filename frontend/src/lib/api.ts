@@ -1,14 +1,13 @@
-// Same-origin /api when deployed on Vercel; local dev uses backend on :8000
+// Always use same-origin /api in the browser so Next.js rewrites proxy to backend (no CORS).
+// Server-side: use deployment URL or NEXT_PUBLIC_API_URL so the request hits the frontend and gets rewritten.
 function getApiBase(): string {
-  if (
-    process.env.NEXT_PUBLIC_API_URL !== undefined &&
-    process.env.NEXT_PUBLIC_API_URL !== ""
-  ) {
-    return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    return "/api";
   }
-  if (typeof window !== "undefined") return "/api";
-  // SSR on Vercel: use deployment URL
+  // SSR: hit same-origin so rewrite proxies to backend, or direct backend for local dev
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api`;
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (url !== undefined && url !== "") return url;
   return "http://localhost:8000";
 }
 const API_BASE = getApiBase();
