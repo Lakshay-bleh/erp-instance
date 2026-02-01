@@ -36,12 +36,22 @@ Result: The browser requests `https://your-frontend.vercel.app/api/*` (same-orig
 
 ---
 
-## 4. 404 Not Found (after CORS is fixed)
+## 4. 404 "The page could not be found" / NOT_FOUND (e.g. on PATCH / Mark Resolved)
 
-If you get **404** on opening an incident, updating status, or deleting:
+If the request URL is **your frontend** (e.g. `https://erp-instance.vercel.app/api/incidents/.../status`) and you get **"The page could not be found"** with a long NOT_FOUND id (especially on **PATCH** for Mark Resolved):
 
-- **First check:** On the **frontend** Vercel project, ensure **API_PROXY_TARGET** or **NEXT_PUBLIC_API_URL** is set to your backend URL (e.g. `https://erp-incidents-api.vercel.app` or `.../api`). If not set, the proxy calls `http://localhost:8000` from the server and fails.
-- Otherwise the **proxy is working** and the backend is returning **404 = "Incident not found"** because that incident is not in its store.
+- **Vercel is not running your API route** — no handler matched that path.
+- **Fix:** In the **frontend** Vercel project (the one whose URL is in the request — e.g. erp-instance):
+  1. Go to **Settings** → **General** → **Root Directory**.
+  2. Set it to **`frontend`** (the folder that has `src/app/api/` and `package.json`).
+  3. **Save** and **Redeploy** the project.
+- **Test:** After redeploy, open `https://erp-instance.vercel.app/api/health`. If you see `{"ok":true,"source":"frontend-api"}`, API routes (including PATCH) are working. Then Mark Resolved and other `/api/incidents/...` requests will be handled by the proxy.
+
+## 5. 404 from backend (Incident not found)
+
+If `/api/health` works but opening an incident or PATCH/DELETE returns **404** with a **JSON** body like `{"detail":"Incident not found"}`:
+
+- The **proxy is working**; the backend is returning **404** because that incident is not in its store.
 - On Vercel, the backend uses **in-memory / file store** by default, so data does **not** persist across serverless invocations. Only incidents created in the same “session” may exist.
 - **Fix:** Configure **DynamoDB** on the **backend** Vercel project so incidents persist:
   1. Backend project → **Settings** → **Environment Variables**
@@ -53,6 +63,6 @@ If you get **404** on opening an incident, updating status, or deleting:
 
 ---
 
-## 5. If you prefer direct backend URL (no proxy)
+## 6. If you prefer direct backend URL (no proxy)
 
 If you keep **NEXT_PUBLIC_API_URL** set to the backend URL (e.g. `https://erp-incidents-api.vercel.app/api`), the browser will call the backend directly and **CORS is required**. The backend (`app.py`) uses FastAPI `CORSMiddleware`; if CORS errors persist, use the proxy approach above.

@@ -4,6 +4,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
+// Ensure this route is always run (not statically optimized) so PATCH/POST/DELETE work
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 function getBackendBase(): string {
   const target = process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_URL;
   if (target && target.trim() !== "") {
@@ -14,46 +18,34 @@ function getBackendBase(): string {
   return "http://localhost:8000";
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+// params can be sync (Next 14) or Promise (Next 15)
+async function getPath(request: NextRequest, params: { path: string[] } | Promise<{ path: string[] }>) {
+  const resolved = await Promise.resolve(params);
+  return proxy(request, resolved.path ?? []);
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+export async function GET(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+export async function POST(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+export async function PATCH(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+export async function PUT(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
 }
 
-export async function OPTIONS(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return proxy(request, params.path);
+export async function DELETE(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
+}
+
+export async function OPTIONS(request: NextRequest, ctx: { params: { path: string[] } | Promise<{ path: string[] }> }) {
+  return getPath(request, ctx.params);
 }
 
 async function proxy(request: NextRequest, pathSegments: string[]) {
