@@ -14,13 +14,28 @@ export function getBackendBase(): string {
   return "http://localhost:8000";
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Max-Age": "86400",
+};
+
 export async function proxyToBackend(
   request: NextRequest,
   pathAfterApi: string,
   search = ""
 ): Promise<NextResponse> {
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   const base = getBackendBase();
-  const url = `${base}/api/${pathAfterApi}${search}`;
+  // Local backend (uvicorn) serves /incidents; Vercel backend is mounted at /api and receives /incidents
+  const isLocal = base.includes("localhost") || base.includes("127.0.0.1");
+  const url = isLocal
+    ? `${base}/${pathAfterApi}${search}`
+    : `${base}/api/${pathAfterApi}${search}`;
 
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -55,6 +70,7 @@ export async function proxyToBackend(
       if (k === "transfer-encoding" || k === "content-encoding") return;
       resHeaders.set(key, value);
     });
+    Object.entries(CORS_HEADERS).forEach(([k, v]) => resHeaders.set(k, v));
 
     const resBody = res.status === 204 ? undefined : await res.text();
     return new NextResponse(resBody, {
@@ -67,10 +83,10 @@ export async function proxyToBackend(
     return NextResponse.json(
       {
         detail: message,
-        hint: "Backend unreachable. Set API_PROXY_TARGET or NEXT_PUBLIC_API_URL on the frontend Vercel project.",
+        hint: "On Vercel: set API_PROXY_TARGET (or NEXT_PUBLIC_API_URL) to your backend URL (e.g. https://your-backend.vercel.app) in the frontend project → Settings → Environment Variables, then redeploy.",
         attempted: url,
       },
-      { status: 502 }
+      { status: 502, headers: CORS_HEADERS }
     );
   }
 }

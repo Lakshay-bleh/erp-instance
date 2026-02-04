@@ -173,6 +173,12 @@ def get_incident_by_id(incident_id: str):
     return _item_to_response(item)
 
 
+@router.get("/{incident_id}/status", response_model=IncidentResponse)
+def get_incident_status(incident_id: str):
+    """Get incident (by id); same as GET /incidents/{id}. Allows GET /incidents/{id}/status for proxy consistency."""
+    return get_incident_by_id(incident_id)
+
+
 @router.patch("/{incident_id}/status", response_model=IncidentResponse)
 def update_incident_status(incident_id: str, body: IncidentUpdateStatus):
     """Update incident status (Open | In Progress | Resolved)."""

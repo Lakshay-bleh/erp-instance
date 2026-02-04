@@ -1,7 +1,7 @@
 /**
  * Proxy all /api/* requests to the backend. Browser only talks to this (same-origin) → no CORS.
  * Set API_PROXY_TARGET or NEXT_PUBLIC_API_URL on the frontend project (Vercel env vars).
- * Explicit route api/incidents/[id]/status handles status so Vercel always matches.
+ * api/incidents/* is handled by api/incidents/[[...rest]]/route.ts.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendBase, proxyToBackend } from "@/lib/api-proxy";

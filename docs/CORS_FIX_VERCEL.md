@@ -1,6 +1,19 @@
-# Fix CORS on Vercel (proxy through frontend)
+# Fix CORS and 404 on Vercel (proxy through frontend)
 
-**Fix:** All `/api/*` requests are handled by a **Next.js API route** (`src/app/api/[...path]/route.ts`) that proxies to the backend on the server. The browser only talks to your frontend (same-origin) → no CORS.
+**Fix:** All `/api/*` requests are handled by **Next.js API routes** that proxy to the backend. The browser only talks to your frontend (same-origin) → no CORS. CORS headers are added to all API responses so preview URLs and cross-origin work.
+
+---
+
+## Quick checklist (CORS + 404)
+
+| Step | Where | What to do |
+|------|--------|------------|
+| 1 | **Frontend** Vercel project → Settings → General | **Root Directory** = `frontend` (so `src/app/api/` is deployed). |
+| 2 | **Frontend** → Settings → Environment Variables | Add **API_PROXY_TARGET** = `https://YOUR-BACKEND.vercel.app` (backend URL **without** `/api`). Apply to Production, Preview, Development. |
+| 3 | **Backend** Vercel project → Settings → General | **Root Directory** = `vercel-backend`. |
+| 4 | Redeploy | Redeploy **frontend** and **backend** after changing env or root. |
+
+Then test: `https://YOUR-FRONTEND.vercel.app/api/health` → `{"ok":true,"source":"frontend-api"}`. If you get 502 on `/api/incidents`, the proxy can’t reach the backend → check API_PROXY_TARGET and that the backend project is deployed.
 
 ---
 
@@ -23,8 +36,8 @@ Result: The browser requests `https://your-frontend.vercel.app/api/*` (same-orig
 | `API_PROXY_TARGET` set   | `/api/incidents`  | `https://backend.vercel.app/api/incidents` |
 | `NEXT_PUBLIC_API_URL` unset | Same-origin `/api` | Backend                               |
 
-- **next.config.js** already has the rewrite: `source: "/api/:path*"` → `destination: "${API_PROXY_TARGET}/api/:path*"`.
-- **api.ts**: When `NEXT_PUBLIC_API_URL` is unset/empty, `getApiBase()` returns `"/api"` in the browser and `https://${VERCEL_URL}/api` on the server, so all requests go through the frontend and get proxied.
+- **No rewrites:** All `/api/*` requests are handled by Next.js API routes (`src/app/api/...`) that proxy to the backend. No `next.config` rewrite.
+- **api.ts**: In the browser `getApiBase()` always returns `"/api"` (same-origin). On the server (SSR) it returns `https://${VERCEL_URL}/api` on Vercel so server-side fetches hit the same frontend and get proxied. Set **API_PROXY_TARGET** on the frontend so the proxy knows the backend URL.
 
 ---
 
