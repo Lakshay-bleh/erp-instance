@@ -1,6 +1,7 @@
 """Incident REST API endpoints."""
 
 import logging
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -169,7 +170,10 @@ def get_incident_by_id(incident_id: str):
     settings = get_settings()
     item = get_incident(settings.dynamodb_table, incident_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Incident not found")
+        detail = "Incident not found."
+        if os.environ.get("VERCEL") and settings.use_local_aws:
+            detail += " On Vercel without DynamoDB, data is not shared across serverless instances—list and get may run on different instances. Add DynamoDB (USE_MEMORY_STORE=false + AWS env vars) so incidents persist."
+        raise HTTPException(status_code=404, detail=detail)
     return _item_to_response(item)
 
 
